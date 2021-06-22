@@ -1,0 +1,109 @@
+---
+- name: install ELK stack
+  hosts: elk
+  tasks:
+
+  - name: install elastic yum repo
+    yum_repository:
+      name: elasticsearch
+      description: "Elasticsearch repository for 7.x packages"
+      file: elastic.repo
+      baseurl: https://artifacts.elastic.co/packages/7.x/yum
+      enabled: yes
+      state: present
+      gpgcheck: yes
+      gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    become: yes
+
+  - name: install software needed for elk
+    dnf:
+      name: "{{ item }}"
+      state: present
+    become: yes
+    loop:
+      - java-1.8.0-openjdk
+      - elasticsearch
+      - kibana
+      - logstash
+    notify:
+      - restart_elk
+
+  - name: install correct elastic config
+    template:
+      src: templates/elasticsearch.yml.j2
+      dest: /etc/elasticsearch/elasticsearch.yml
+      owner: root
+      group: elasticsearch
+      mode: 0660
+    become: yes
+    notify:
+      - restart_elk
+
+  - name: install correct kibana config
+    template:
+      src: templates/kibana.yml.j2
+      dest: /etc/kibana/kibana.yml
+      owner: root
+      group: kibana
+      mode: 0660
+    become: yes
+    notify:
+      - restart_elk
+
+  - name: enable and start elk
+    systemd:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    become: yes
+    loop:
+      - elasticsearch
+      - kibana
+      - logstash
+
+  ## TO BE DONE: elasticsearch users
+  ## For now: DIY: /usr/share/elasticsearch/bin/elasticsearch-setup-passwords interactive
+  ## https://www.elastic.co/guide/en/elasticsearch/reference/current/built-in-users.html
+
+  - name: open firewall for elastic
+    firewalld:
+      immediate: yes
+      permanent: yes
+      port: "{{ item }}"
+      state: enabled
+    become: yes
+    loop:
+      - 9200/tcp
+      - 5601/tcp
+
+  - name: install filebeat
+    dnf:
+      name: filebeat
+      state: present
+    become: yes
+    register: filebeat
+
+  - name: configure filebeat
+    command:
+      cmd: "filebeat setup"
+    become: yes
+    when: filebeat.changed
+
+  - name: start filebeat
+    systemd:
+      name: filebeat
+      state: started
+      enabled: yes
+    become: yes
+
+  handlers:
+
+  - name: restart_elk
+    systemd:
+      name: "{{ item }}"
+      state: restarted
+      enabled: yes
+    become: yes
+    loop:
+      - elasticsearch
+      - kibana
