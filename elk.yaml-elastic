@@ -1,0 +1,25 @@
+- name: Elasticsearch with custom configuration
+  hosts: elk
+  roles:
+    - role: elastic.elasticsearch
+  vars:
+    es_enable_auto_ssl_configuration: true
+    es_enable_http_ssl: true
+    es_enable_transport_ssl: true
+    es_ssl_upload: true
+    #es_ssl_keystore: ""
+    #es_ssl_keystore_password: ""
+    #es_ssl_truststore: ""
+    #es_ssl_truststore_password: ""
+    es_ssl_key: "instance.key"
+    #es_ssl_key_password: ""
+    es_ssl_certificate: "instance.crt"
+    #es_ssl_cerfalse: ""
+    es_ssl_certificate_path: "{{ es_conf_dir }}/certs"
+    es_ssl_verification_mode: "certificate"
+    es_validate_certs: "yes"
+    es_delete_unmanaged_file: true
+    es_delete_unmanaged_native: true
+    es_api_basic_auth_username: elastic
+    es_api_basic_auth_password: "redhat123"
+
